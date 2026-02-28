@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON GRID DEFENSE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Orbitron', 'Courier New', monospace;
+            color: #0ff;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* ===== UI OVERLAY ===== */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ===== TOP HUD ===== */
+        #top-hud {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 30px;
+        }
+
+        .hud-item {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            padding: 12px 28px;
+            border-radius: 4px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .hud-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            opacity: 0.6;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-size: 26px;
+            font-weight: 700;
+            text-shadow: 0 0 15px currentColor, 0 0 30px currentColor;
+        }
+
+        #health-value { color: #ff0066; }
+        #gold-value { color: #ffff00; }
+        #wave-value { color: #00ffff; }
+
+        /* ===== TOWER PANEL ===== */
+        #tower-panel {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .tower-btn {
+            width: 85px;
+            height: 105px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tower-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .tower-btn:hover::before {
+            left: 100%;
+        }
+
+        .tower-btn:hover {
+            border-color: #0ff;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(0, 255, 255, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .tower-btn.selected {
+            border-color: #ff00ff;
+            box-shadow: 0 0 35px rgba(255, 0, 255, 0.6), inset 0 0 25px rgba(255, 0, 255, 0.15);
+        }
+
+        .tower-btn.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: grayscale(0.5);
+        }
+
+        .tower-btn.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .tower-icon {
+            font-size: 32px;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .tower-name {
+            font-size: 9px;
+            letter-spacing: 2px;
+            opacity: 0.9;
+        }
+
+        .tower-cost {
+            font-size: 11px;
+            color: #ffff00;
+            text-shadow: 0 0 8px #ffff00;
+        }
+
+        .tower-key {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 10px;
+            opacity: 0.4;
+        }
+
+        /* ===== WAVE BUTTON ===== */
+        #wave-btn {
+            position: absolute;
+            right: 30px;
+            bottom: 30px;
+            padding: 16px 35px;
+            background: transparent;
+            border: 2px solid #ff00ff;
+            color: #ff00ff;
+            font-family: 'Orbitron', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #wave-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 0, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        #wave-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        #wave-btn:hover {
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.5);
+            text-shadow: 0 0 20px #ff00ff;
+        }
+
+        #wave-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        #wave-btn:disabled:hover::before {
+            width: 0;
+            height: 0;
+        }
+
+        #wave-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== CELL INFO PANEL ===== */
+        #cell-info {
+            position: absolute;
+            top: 100px;
+            right: 25px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 18px;
+            border-radius: 6px;
+            min-width: 170px;
+            display: none;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+
+        #cell-info.show {
+            display: block;
+        }
+
+        .info-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff;
+            letter-spacing: 2px;
+        }
+
+        .info-stat {
+            font-size: 10px;
+            margin: 6px 0;
+            opacity: 0.85;
+            letter-spacing: 1px;
+        }
+
+        .info-stat span {
+            color: #0ff;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        #upgrade-btn {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        #upgrade-btn:hover {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        #sell-btn {
+            border-color: #ff3333;
+            color: #ff3333;
+        }
+
+        #sell-btn:hover {
+            background: rgba(255, 50, 50, 0.2);
+            box-shadow: 0 0 15px rgba(255, 50, 50, 0.5);
+        }
+
+        /* ===== GAME OVERLAY ===== */
+        #game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 35px;
+            pointer-events: auto;
+            z-index: 200;
+        }
+
+        #game-overlay.show {
+            display: flex;
+        }
+
+        #overlay-title {
+            font-size: 55px;
+            font-weight: 900;
+            letter-spacing: 12px;
+            text-shadow: 0 0 40px currentColor, 0 0 80px currentColor;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        #overlay-title.victory { color: #0ff; }
+        #overlay-title.defeat { color: #ff0066; }
+
+        #overlay-subtitle {
+            font-size: 16px;
+            letter-spacing: 5px;
+            opacity: 0.7;
+        }
+
+        #restart-btn {
+            padding: 18px 55px;
+            background: transparent;
+            border: 2px solid #0ff;
+            color: #0ff;
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #restart-btn:hover {
+            background: rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.5);
+            text-shadow: 0 0 20px #0ff;
+        }
+
+        /* ===== LOADING SCREEN ===== */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            z-index: 1000;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        #loading-title {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            color: #0ff;
+            text-shadow: 0 0 30px #0ff;
+        }
+
+        #loading-bar {
+            width: 300px;
+            height: 3px;
+            background: rgba(0, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #loading-progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #0ff, #ff00ff);
+            box-shadow: 0 0 15px #0ff;
+            transition: width 0.3s;
+        }
+
+        #loading-text {
+            font-size: 11px;
+            letter-spacing: 3px;
+            opacity: 0.6;
+        }
+
+        /* ===== INSTRUCTIONS ===== */
+        #instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            font-size: 9px;
+            letter-spacing: 1px;
+            opacity: 0.4;
+            line-height: 1.8;
+        }
+
+        /* ===== ENEMY COUNT ===== */
+        #enemy-count {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #enemy-count.show {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Three.js Canvas will be inserted here -->
+
+        <div id="ui-overlay">
+            <!-- Top HUD -->
+            <div id="top-hud">
+                <div class="hud-item">
+                    <div class="hud-label">HEALTH</div>
+                    <div class="hud-value" id="health-value">20</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-label">GOLD</div>
+                    <div class="hud-value" id="gold-value">100</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-label">WAVE</div>
+                    <div class="hud-value" id="wave-value">0/15</div>
+                </div>
+            </div>
+
+            <!-- Enemy Count -->
+            <div id="enemy-count">ENEMIES: <span id="enemy-count-value">0</span></div>
+
+            <!-- Tower Selection -->
+            <div id="tower-panel">
+                <div class="tower-btn" data-tower="pulse" data-cost="50">
+                    <span class="tower-key">1</span>
+                    <div class="tower-icon" style="color: #00ffff;">△</div>
+                    <div class="tower-name">PULSE</div>
+                    <div class="tower-cost">50G</div>
+                </div>
+                <div class="tower-btn" data-tower="beam" data-cost="100">
+                    <span class="tower-key">2</span>
+                    <div class="tower-icon" style="color: #ff00ff;">◇</div>
+                    <div class="tower-name">BEAM</div>
+                    <div class="tower-cost">100G</div>
+                </div>
+                <div class="tower-btn" data-tower="nova" data-cost="150">
+                    <span class="tower-key">3</span>
+                    <div class="tower-icon" style="color: #ffff00;">○</div>
+                    <div class="tower-name">NOVA</div>
+                    <div class="tower-cost">150G</div>
+                </div>
+                <div class="tower-btn" data-tower="freeze" data-cost="75">
+                    <span class="tower-key">4</span>
+                    <div class="tower-icon" style="color: #00ff88;">◎</div>
+                    <div class="tower-name">FREEZE</div>
+                    <div class="tower-cost">75G</div>
+                </div>
+            </div>
+
+            <!-- Wave Start Button -->
+            <button id="wave-btn"><span>START WAVE</span></button>
+
+            <!-- Tower Info Panel -->
+            <div id="cell-info">
+                <div class="info-title" id="info-tower-name">PULSE TOWER</div>
+                <div class="info-stat">Damage: <span id="info-damage">10</span></div>
+                <div class="info-stat">Range: <span id="info-range">2</span></div>
+                <div class="info-stat">Level: <span id="info-level">1</span></div>
+                <div class="info-stat">Kills: <span id="info-kills">0</span></div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="upgrade-btn">UPGRADE</button>
+                    <button class="action-btn" id="sell-btn">SELL</button>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div id="instructions">
+                [1-4] SELECT TOWER<br>
+                [CLICK] PLACE / SELECT<br>
+                [ESC] CANCEL
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div id="game-overlay">
+                <div id="overlay-title">GAME OVER</div>
+                <div id="overlay-subtitle"></div>
+                <button id="restart-btn">RESTART</button>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loading">
+            <div id="loading-title">NEON GRID</div>
+            <div id="loading-bar">
+                <div id="loading-progress"></div>
+            </div>
+            <div id="loading-text">INITIALIZING DEFENSE MATRIX...</div>
+        </div>
+    </div>
+
+    <!-- Three.js Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Post Processing -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+
+    <!-- Game Script -->
+    <script src="game.js"></script>
+</body>
+</html>
