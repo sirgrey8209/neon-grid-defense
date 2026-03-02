@@ -574,6 +574,33 @@
             #loading-bar {
                 width: 250px;
             }
+
+            /* Drag Ghost */
+            #drag-ghost {
+                position: fixed;
+                pointer-events: none;
+                z-index: 300;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                opacity: 0.8;
+                transform: translate(-50%, -50%);
+            }
+
+            #drag-ghost.active {
+                display: flex;
+            }
+
+            .ghost-icon {
+                font-size: 40px;
+                text-shadow: 0 0 20px currentColor;
+            }
+
+            .ghost-name {
+                font-size: 10px;
+                letter-spacing: 2px;
+                margin-top: 4px;
+            }
         }
     </style>
 </head>
@@ -658,6 +685,12 @@
                 <div id="overlay-subtitle"></div>
                 <button id="restart-btn">RESTART</button>
             </div>
+        </div>
+
+        <!-- Drag Ghost for Mobile -->
+        <div id="drag-ghost">
+            <div class="ghost-icon"></div>
+            <div class="ghost-name"></div>
         </div>
 
         <!-- Loading Screen -->
