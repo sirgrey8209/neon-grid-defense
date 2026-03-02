@@ -1582,13 +1582,25 @@ function initInput() {
         restartGame();
     });
 
-    // Window resize
+    // Window resize - handle dynamic viewport changes (mobile browser chrome)
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
         composer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    // Handle visual viewport changes for mobile (iOS Safari, etc.)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            // Update renderer to match visual viewport
+            const vv = window.visualViewport;
+            camera.aspect = vv.width / vv.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(vv.width, vv.height);
+            composer.setSize(vv.width, vv.height);
+        });
+    }
 }
 
 // ============================================================================

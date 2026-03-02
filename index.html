@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
     <title>NEON GRID DEFENSE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -24,6 +24,7 @@
             position: relative;
             width: 100vw;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height - excludes browser UI */
         }
 
         canvas {
@@ -469,50 +470,58 @@
                 font-size: 18px;
             }
 
-            /* Tower Panel */
+            /* Tower Panel - uses dvh to properly handle mobile browser chrome */
             #tower-panel {
+                position: fixed;
                 bottom: 0;
-                padding: 8px;
-                padding-bottom: calc(8px + env(safe-area-inset-bottom, 20px));
+                left: 0;
+                right: 0;
+                padding: 6px 4px;
+                padding-bottom: max(6px, env(safe-area-inset-bottom));
                 background: rgba(0, 0, 0, 0.95);
                 border-top: 1px solid rgba(0, 255, 255, 0.3);
                 width: 100%;
                 justify-content: space-around;
-                gap: 4px;
+                gap: 2px;
+                z-index: 120;
             }
 
             .tower-btn {
-                width: 60px;
-                height: 65px;
+                width: 55px;
+                height: 55px;
                 touch-action: none;
+                padding: 4px;
             }
 
             .tower-icon {
-                font-size: 24px;
+                font-size: 20px;
             }
 
             .tower-name {
-                font-size: 8px;
+                font-size: 7px;
+                letter-spacing: 1px;
             }
 
             .tower-cost {
-                font-size: 10px;
+                font-size: 9px;
             }
 
             .tower-key {
                 display: none;
             }
 
-            /* Wave Button */
+            /* Wave Button - positioned relative to tower panel */
             #wave-btn {
+                position: fixed;
                 right: auto;
                 left: 50%;
                 transform: translateX(-50%);
-                bottom: calc(85px + env(safe-area-inset-bottom, 20px));
-                width: 90%;
-                max-width: 300px;
-                padding: 10px 16px;
+                bottom: calc(65px + max(6px, env(safe-area-inset-bottom)));
+                width: 85%;
+                max-width: 280px;
+                padding: 8px 14px;
                 font-size: 10px;
+                z-index: 120;
             }
 
             /* Hide desktop instructions */
