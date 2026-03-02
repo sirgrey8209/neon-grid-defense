@@ -1499,6 +1499,21 @@ function initInput() {
         });
     });
 
+    // Mobile touch handlers for tower buttons
+    if (gameState.isMobile) {
+        document.querySelectorAll('.tower-btn').forEach(btn => {
+            btn.addEventListener('touchstart', handleTowerTouchStart, { passive: false });
+            btn.addEventListener('touchmove', handleTowerTouchMove, { passive: false });
+            btn.addEventListener('touchend', handleTowerTouchEnd, { passive: false });
+            btn.addEventListener('touchcancel', handleTowerTouchEnd, { passive: false });
+        });
+
+        // Touch on game area
+        renderer.domElement.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
+        renderer.domElement.addEventListener('touchmove', handleCanvasTouchMove, { passive: false });
+        renderer.domElement.addEventListener('touchend', handleCanvasTouchEnd, { passive: false });
+    }
+
     // Wave button
     document.getElementById('wave-btn').addEventListener('click', (e) => {
         e.stopPropagation();
