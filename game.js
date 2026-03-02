@@ -179,6 +179,20 @@ const gameState = {
     // Screen effects
     screenShake: 0,
     chromaticAberration: 0,
+
+    // Mobile touch state
+    touch: {
+        isDragging: false,
+        dragTowerType: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        holdTimer: null,
+    },
+
+    // Device detection
+    isMobile: false,
 };
 
 // ============================================================================
