@@ -191,6 +191,23 @@ const gameState = {
         holdTimer: null,
     },
 
+    // Camera control state
+    camera: {
+        baseY: 18,
+        baseZ: 22,
+        currentY: 18,
+        currentZ: 22,
+        targetY: 18,
+        targetZ: 22,
+        panX: 7,
+        panTargetX: 7,
+        lastPinchDist: 0,
+        lastPanX: 0,
+        lastPanY: 0,
+        isPinching: false,
+        isPanning: false,
+    },
+
     // Device detection
     isMobile: false,
 };
@@ -211,11 +228,24 @@ function initThree() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000008);
 
-    // Camera - Isometric-ish view
+    // Camera - Isometric-ish view (zoomed out more for mobile)
     const aspect = window.innerWidth / window.innerHeight;
     camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-    camera.position.set(7, 15, 18);
+
+    // Set initial camera position based on device
+    const isMobileView = window.innerWidth <= 768 || window.innerHeight > window.innerWidth;
+    const initialY = isMobileView ? 22 : 15;
+    const initialZ = isMobileView ? 26 : 18;
+    camera.position.set(7, initialY, initialZ);
     camera.lookAt(7, 0, 5);
+
+    // Update gameState camera values
+    gameState.camera.baseY = initialY;
+    gameState.camera.baseZ = initialZ;
+    gameState.camera.currentY = initialY;
+    gameState.camera.currentZ = initialZ;
+    gameState.camera.targetY = initialY;
+    gameState.camera.targetZ = initialZ;
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1326,16 +1356,25 @@ function updateParticles(delta) {
 // ============================================================================
 
 function updateScreenEffects(delta) {
+    // Smooth camera zoom/pan interpolation
+    const lerpSpeed = 5 * delta;
+    gameState.camera.currentY += (gameState.camera.targetY - gameState.camera.currentY) * lerpSpeed;
+    gameState.camera.currentZ += (gameState.camera.targetZ - gameState.camera.currentZ) * lerpSpeed;
+    gameState.camera.panX += (gameState.camera.panTargetX - gameState.camera.panX) * lerpSpeed;
+
     // Screen shake
     if (gameState.screenShake > 0) {
         gameState.screenShake -= delta * 2;
         const shakeAmount = gameState.screenShake * 0.3;
-        camera.position.x = 7 + (Math.random() - 0.5) * shakeAmount;
-        camera.position.y = 15 + (Math.random() - 0.5) * shakeAmount;
+        camera.position.x = gameState.camera.panX + (Math.random() - 0.5) * shakeAmount;
+        camera.position.y = gameState.camera.currentY + (Math.random() - 0.5) * shakeAmount;
+        camera.position.z = gameState.camera.currentZ;
     } else {
-        camera.position.x = 7;
-        camera.position.y = 15;
+        camera.position.x = gameState.camera.panX;
+        camera.position.y = gameState.camera.currentY;
+        camera.position.z = gameState.camera.currentZ;
     }
+    camera.lookAt(gameState.camera.panX, 0, 5);
 
     // Chromatic aberration fade
     if (gameState.chromaticAberration > 0) {
@@ -1746,6 +1785,19 @@ function handleCanvasTouchStart(e) {
     // Don't interfere with drag operations
     if (gameState.touch.isDragging) return;
 
+    // Two-finger gesture detection
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dist = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        gameState.camera.lastPinchDist = dist;
+        gameState.camera.lastPanX = (touch1.clientX + touch2.clientX) / 2;
+        gameState.camera.lastPanY = (touch1.clientY + touch2.clientY) / 2;
+        gameState.camera.isPinching = true;
+        return;
+    }
+
     const touch = e.touches[0];
     gameState.touch.startX = touch.clientX;
     gameState.touch.startY = touch.clientY;
@@ -1755,10 +1807,45 @@ function handleCanvasTouchMove(e) {
     // Allow scrolling/panning if not dragging tower
     if (gameState.touch.isDragging) {
         e.preventDefault();
+        return;
+    }
+
+    // Two-finger pinch zoom and pan
+    if (e.touches.length === 2 && gameState.camera.isPinching) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+
+        // Pinch zoom
+        const dist = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        const deltaDist = dist - gameState.camera.lastPinchDist;
+        gameState.camera.lastPinchDist = dist;
+
+        // Zoom: adjust Y and Z together
+        const zoomSpeed = 0.05;
+        gameState.camera.targetY = Math.max(10, Math.min(30, gameState.camera.targetY - deltaDist * zoomSpeed));
+        gameState.camera.targetZ = Math.max(12, Math.min(35, gameState.camera.targetZ - deltaDist * zoomSpeed));
+
+        // Two-finger pan
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        const panDeltaX = centerX - gameState.camera.lastPanX;
+        gameState.camera.lastPanX = centerX;
+        gameState.camera.lastPanY = centerY;
+
+        // Pan camera target
+        const panSpeed = 0.02;
+        gameState.camera.panTargetX = Math.max(2, Math.min(12, gameState.camera.panTargetX - panDeltaX * panSpeed));
     }
 }
 
 function handleCanvasTouchEnd(e) {
+    // Reset pinching state
+    if (gameState.camera.isPinching) {
+        gameState.camera.isPinching = false;
+        if (e.touches.length === 0) return;
+    }
+
     if (gameState.touch.isDragging) return;
 
     const touch = e.changedTouches[0];
