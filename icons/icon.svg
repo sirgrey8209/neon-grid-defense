@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000008"/>
+  <!-- Grid lines -->
+  <g stroke="#00ffff" stroke-width="1" opacity="0.3">
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+  </g>
+  <!-- Tower (triangle) -->
+  <polygon points="256,120 180,280 332,280" fill="none" stroke="#00ffff" stroke-width="8"/>
+  <polygon points="256,140 200,260 312,260" fill="#00ffff" opacity="0.3"/>
+  <!-- Path indicator -->
+  <line x1="80" y1="360" x2="432" y2="360" stroke="#ff00ff" stroke-width="6" stroke-dasharray="20,10"/>
+  <!-- Enemy (small triangle) -->
+  <polygon points="400,340 380,380 420,380" fill="none" stroke="#ff0066" stroke-width="4"/>
+</svg>
