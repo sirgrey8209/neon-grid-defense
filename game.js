@@ -1778,6 +1778,10 @@ function animate() {
 // ============================================================================
 
 function init() {
+    // Detect mobile device
+    gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (window.innerWidth <= 768 && window.innerHeight > window.innerWidth);
+
     // Update loading progress
     const loadingProgress = document.getElementById('loading-progress');
     const loadingText = document.getElementById('loading-text');
