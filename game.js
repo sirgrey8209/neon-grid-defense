@@ -1552,6 +1552,262 @@ function initInput() {
     });
 }
 
+// ============================================================================
+// MOBILE TOUCH HANDLERS
+// ============================================================================
+
+function handleTowerTouchStart(e) {
+    e.preventDefault();
+    const btn = e.currentTarget;
+    const type = btn.dataset.tower;
+    const config = CONFIG.TOWERS[type];
+
+    if (gameState.gold < config.cost) {
+        showMessage('NOT ENOUGH GOLD', CONFIG.COLORS.RED);
+        return;
+    }
+
+    const touch = e.touches[0];
+    gameState.touch.startX = touch.clientX;
+    gameState.touch.startY = touch.clientY;
+    gameState.touch.dragTowerType = type;
+
+    // Start hold timer for drag initiation
+    gameState.touch.holdTimer = setTimeout(() => {
+        startDrag(type, touch.clientX, touch.clientY);
+    }, 200);
+}
+
+function startDrag(type, x, y) {
+    const config = CONFIG.TOWERS[type];
+    gameState.touch.isDragging = true;
+
+    // Setup ghost element
+    const ghost = document.getElementById('drag-ghost');
+    const ghostIcon = ghost.querySelector('.ghost-icon');
+    const ghostName = ghost.querySelector('.ghost-name');
+
+    ghostIcon.textContent = getTowerIcon(type);
+    ghostIcon.style.color = `#${config.color.toString(16).padStart(6, '0')}`;
+    ghostName.textContent = config.name;
+    ghostName.style.color = `#${config.color.toString(16).padStart(6, '0')}`;
+
+    ghost.style.left = `${x}px`;
+    ghost.style.top = `${y}px`;
+    ghost.classList.add('active');
+
+    // Dim the source button
+    document.querySelector(`[data-tower="${type}"]`).style.opacity = '0.4';
+
+    // Haptic feedback if available
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+}
+
+function getTowerIcon(type) {
+    switch(type) {
+        case 'pulse': return '△';
+        case 'beam': return '◇';
+        case 'nova': return '○';
+        case 'freeze': return '◎';
+        default: return '□';
+    }
+}
+
+function handleTowerTouchMove(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+
+    // Clear hold timer if moved too much before drag started
+    if (!gameState.touch.isDragging) {
+        const dx = touch.clientX - gameState.touch.startX;
+        const dy = touch.clientY - gameState.touch.startY;
+        if (Math.sqrt(dx*dx + dy*dy) > 10) {
+            clearTimeout(gameState.touch.holdTimer);
+            // Start drag immediately on significant movement
+            startDrag(gameState.touch.dragTowerType, touch.clientX, touch.clientY);
+        }
+        return;
+    }
+
+    // Update ghost position
+    const ghost = document.getElementById('drag-ghost');
+    ghost.style.left = `${touch.clientX}px`;
+    ghost.style.top = `${touch.clientY}px`;
+
+    // Update hover indicator on grid
+    gameState.touch.currentX = touch.clientX;
+    gameState.touch.currentY = touch.clientY;
+    updateDragHover(touch.clientX, touch.clientY);
+}
+
+function updateDragHover(clientX, clientY) {
+    // Convert screen coordinates to normalized device coordinates
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const ground = scene.getObjectByName('ground');
+    const intersects = raycaster.intersectObject(ground);
+
+    if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const gridX = Math.floor(point.x);
+        const gridY = Math.floor(point.z);
+
+        // Check bounds
+        if (gridX < 0 || gridX >= CONFIG.GRID_WIDTH || gridY < 0 || gridY >= CONFIG.GRID_HEIGHT) {
+            hoverIndicator.visible = false;
+            rangeIndicator.visible = false;
+            return;
+        }
+
+        hoverIndicator.visible = true;
+        hoverIndicator.position.set(gridX + 0.5, 0.01, gridY + 0.5);
+
+        const type = gameState.touch.dragTowerType;
+        const config = CONFIG.TOWERS[type];
+
+        // Check if can place
+        if (gameState.grid[gridX][gridY] !== 0) {
+            hoverIndicator.material.color.setHex(CONFIG.COLORS.RED);
+            hoverIndicator.material.opacity = 0.4;
+        } else {
+            hoverIndicator.material.color.setHex(config.color);
+            hoverIndicator.material.opacity = 0.3;
+        }
+
+        // Show range preview
+        rangeIndicator.visible = true;
+        rangeIndicator.position.set(gridX + 0.5, 0.02, gridY + 0.5);
+        rangeIndicator.scale.set(config.range * 2, config.range * 2, 1);
+        rangeIndicator.material.color.setHex(config.color);
+    } else {
+        hoverIndicator.visible = false;
+        rangeIndicator.visible = false;
+    }
+}
+
+function handleTowerTouchEnd(e) {
+    e.preventDefault();
+
+    // Clear hold timer
+    clearTimeout(gameState.touch.holdTimer);
+
+    if (!gameState.touch.isDragging) {
+        // Was just a tap, select tower instead
+        const type = gameState.touch.dragTowerType;
+        if (type) {
+            selectTower(type);
+        }
+        gameState.touch.dragTowerType = null;
+        return;
+    }
+
+    // End drag
+    const ghost = document.getElementById('drag-ghost');
+    ghost.classList.remove('active');
+
+    // Restore button opacity
+    const type = gameState.touch.dragTowerType;
+    document.querySelector(`[data-tower="${type}"]`).style.opacity = '1';
+
+    // Try to place tower at current position
+    const clientX = gameState.touch.currentX || gameState.touch.startX;
+    const clientY = gameState.touch.currentY || gameState.touch.startY;
+
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const ground = scene.getObjectByName('ground');
+    const intersects = raycaster.intersectObject(ground);
+
+    if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const gridX = Math.floor(point.x);
+        const gridY = Math.floor(point.z);
+
+        // Check bounds
+        if (gridX >= 0 && gridX < CONFIG.GRID_WIDTH && gridY >= 0 && gridY < CONFIG.GRID_HEIGHT) {
+            placeTower(gridX, gridY, type);
+        }
+    }
+
+    // Reset touch state
+    gameState.touch.isDragging = false;
+    gameState.touch.dragTowerType = null;
+    hoverIndicator.visible = false;
+    rangeIndicator.visible = false;
+}
+
+function handleCanvasTouchStart(e) {
+    // Don't interfere with drag operations
+    if (gameState.touch.isDragging) return;
+
+    const touch = e.touches[0];
+    gameState.touch.startX = touch.clientX;
+    gameState.touch.startY = touch.clientY;
+}
+
+function handleCanvasTouchMove(e) {
+    // Allow scrolling/panning if not dragging tower
+    if (gameState.touch.isDragging) {
+        e.preventDefault();
+    }
+}
+
+function handleCanvasTouchEnd(e) {
+    if (gameState.touch.isDragging) return;
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - gameState.touch.startX;
+    const dy = touch.clientY - gameState.touch.startY;
+
+    // Only process as tap if minimal movement
+    if (Math.sqrt(dx*dx + dy*dy) > 20) return;
+
+    e.preventDefault();
+
+    // Convert to mouse coordinates for raycasting
+    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const ground = scene.getObjectByName('ground');
+    const intersects = raycaster.intersectObject(ground);
+
+    if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const gridX = Math.floor(point.x);
+        const gridY = Math.floor(point.z);
+
+        if (gridX < 0 || gridX >= CONFIG.GRID_WIDTH || gridY < 0 || gridY >= CONFIG.GRID_HEIGHT) {
+            return;
+        }
+
+        if (gameState.selectedTower) {
+            // Place selected tower (fallback for tap-to-place)
+            if (placeTower(gridX, gridY, gameState.selectedTower)) {
+                const config = CONFIG.TOWERS[gameState.selectedTower];
+                if (gameState.gold < config.cost) {
+                    cancelSelection();
+                }
+            }
+        } else {
+            // Check if tapped on existing tower
+            const clickedTower = gameState.towers.find(t => t.gridX === gridX && t.gridY === gridY);
+            if (clickedTower) {
+                gameState.selectedPlacedTower = clickedTower;
+                showTowerInfo(clickedTower);
+            } else {
+                hideTowerInfo();
+            }
+        }
+    }
+}
+
 function selectTower(type) {
     const config = CONFIG.TOWERS[type];
 
