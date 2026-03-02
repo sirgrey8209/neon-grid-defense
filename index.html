@@ -541,6 +541,15 @@
                 transform: translateY(0);
             }
 
+            /* Sheet Drag Handle */
+            .sheet-handle {
+                width: 40px;
+                height: 4px;
+                background: rgba(0, 255, 255, 0.4);
+                border-radius: 2px;
+                margin: 0 auto 15px;
+            }
+
             .action-buttons {
                 flex-direction: row;
                 gap: 12px;
@@ -661,6 +670,7 @@
 
             <!-- Tower Info Panel -->
             <div id="cell-info">
+                <div class="sheet-handle"></div>
                 <div class="info-title" id="info-tower-name">PULSE TOWER</div>
                 <div class="info-stat">Damage: <span id="info-damage">10</span></div>
                 <div class="info-stat">Range: <span id="info-range">2</span></div>
